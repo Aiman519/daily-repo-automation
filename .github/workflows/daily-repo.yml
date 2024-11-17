@@ -1,0 +1,76 @@
+name: Create and Populate Daily Repo
+on:
+  schedule:
+    - cron: '0 15 * * *'  # Triggers the workflow every day at 3 PM UTC (8 PM Islamabad time)
+jobs:
+  create-and-populate-repo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        
+      - name: Create Repository
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const { Octokit } = require("@octokit/rest");  // Import Octokit from the @octokit/rest package
+            const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });  // Initialize octokit with your GitHub token
+            
+            const repoName = `daily-repo-${new Date().toISOString().slice(0, 10)}`;
+            
+            // Create a new repository using the Octokit instance
+            await octokit.rest.repos.createForAuthenticatedUser({
+              name: repoName,
+              auto_init: true,
+            });
+            
+            console.log(`Repository ${repoName} created successfully!`);
+      - name: Clone New Repository
+        run: |
+          git clone https://github.com/${{ github.repository }}/$repoName.git
+          cd $repoName
+
+      - name: Generate Date-Specific Content
+        run: |
+          cd $repoName
+          
+          # Get the day of the month (01-31)
+          DAY_OF_MONTH=$(date +%d)
+          
+          # Generate content based on the day of the month
+          if [ "$DAY_OF_MONTH" -eq 01 ]; then
+            echo "// This is the first day of the month!" > script.js
+            echo "console.log('Welcome to the start of a new month!')" >> script.js
+          elif [ "$DAY_OF_MONTH" -eq 02 ]; then
+            echo "// Day 2 content" > script.js
+            echo "console.log('Let\'s keep the momentum going on Day 2!')" >> script.js
+          elif [ "$DAY_OF_MONTH" -eq 03 ]; then
+            echo "// Day 3 content" > script.js
+            echo "console.log('Day 3 is here! Keep coding!')" >> script.js
+          elif [ "$DAY_OF_MONTH" -eq 04 ]; then
+            echo "// Day 4 content" > script.js
+            echo "console.log('It\'s Day 4! Getting into the groove.')" >> script.js
+          elif [ "$DAY_OF_MONTH" -eq 05 ]; then
+            echo "// Day 5 content" > script.js
+            echo "console.log('Day 5! Keep up the great work!')" >> script.js
+          # Repeat for all days up to 31
+          else
+            echo "// Default content for other days" > script.js
+            echo "console.log('This is content for any other day of the month.')" >> script.js
+          fi
+
+          # Also generate a different README for each date
+          echo "# Daily Generated Repo - $(date)" > README.md
+          echo "This repository is generated automatically every day!" >> README.md
+          
+          # Optionally, add more files or scripts for specific dates
+          echo "This content was generated on day $DAY_OF_MONTH of the month." > extra-file.txt
+
+      - name: Commit and Push Content
+        run: |
+          cd $repoName
+          git add .
+          git commit -m "Add date-specific content"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
